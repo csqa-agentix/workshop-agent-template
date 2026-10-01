@@ -1,0 +1,39 @@
+{
+  "_README": "These are COPY-PASTE EXAMPLES. Nothing here is active. Copy ONE entry into mcp.json (inside \"mcpServers\"). Details: docs/MCP.md",
+
+  "mcpServers": {
+
+    "playwright": {
+      "_what": "A browser the agent can drive. Runs on YOUR computer (needs Node.js). It offers 60+ tools, so you MUST choose a few with include.",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--headless", "--isolated"],
+      "include": ["browser_navigate", "browser_snapshot", "browser_click"],
+      "approval": "ask",
+      "auto_approve": ["browser_snapshot"]
+    },
+
+    "github": {
+      "_what": "GitHub's own MCP server, reached over the internet. Needs a TOKEN in .env as GITHUB_TOKEN (use a read-only token).",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": { "Authorization": "Bearer ${GITHUB_TOKEN}" },
+      "include": ["get_pull_request", "get_pull_request_files"],
+      "approval": "ask"
+    },
+
+    "my-own-server": {
+      "_what": "Your own MCP server, a Python file you wrote (see docs/MCP.md for a 15-line one).",
+      "command": "python",
+      "args": ["my_agent/my_mcp_server.py"],
+      "include": ["my_tool_name"],
+      "approval": "ask"
+    },
+
+    "some-remote-server": {
+      "_what": "Any remote MCP server that gives you a URL and (optionally) a key.",
+      "url": "https://example.com/mcp",
+      "headers": { "Authorization": "Bearer ${EXAMPLE_API_KEY}" },
+      "include": ["tool_one", "tool_two"],
+      "approval": "ask"
+    }
+  }
+}

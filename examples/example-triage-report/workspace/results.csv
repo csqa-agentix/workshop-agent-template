@@ -1,0 +1,12 @@
+item,status,duration_ms,note
+login,ok,820,
+login,ok,790,
+checkout,failed,5012,TimeoutError waiting for #pay-button
+checkout,ok,3100,
+checkout,failed,5008,TimeoutError waiting for #pay-button
+search,failed,410,expected 12 results but got 0
+search,failed,398,expected 12 results but got 0
+cart,failed,2200,connection reset by peer
+cart,ok,2150,
+profile,failed,300,
+profile,ok,305,

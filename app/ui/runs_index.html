@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>All runs</title>
+<!-- The list of every run in this folder. Regenerated after each run by app/telemetry.py. Double-click to open. -->
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1b1f24; --muted:#667085; --line:#e4e7ec; --accent:#2f5bea; --ok:#12805c; --bad:#b42318; --warn:#b54708; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#12151a; --card:#1b2027; --ink:#e8eaee; --muted:#9aa3b2; --line:#2c333d; --accent:#7f9bff; --ok:#4cc38a; --bad:#ff7b72; --warn:#e3a23c; } }
+  * { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; } h1 { font-size:22px; margin:0 0 4px; } .muted { color:var(--muted); }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; margin-top:14px; }
+  th, td { padding:8px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top; } th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+  .chip { font-weight:700; font-size:12px; } .completed { color:var(--ok) } .failed,.crashed,.cancelled,.out_of_turns,.out_of_budget,.unreadable { color:var(--bad) } .running { color:var(--warn) }
+  a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; } .goal { max-width: 420px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  input { font:inherit; padding:7px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); width: 280px; max-width:100%; }
+</style>
+</head>
+<body>
+<main>
+  <h1>All runs</h1>
+  <div class="muted">Every time the agent runs, it leaves a folder here. Click a time to see the picture of that run.</div>
+  <p><input id="q" placeholder="Filter by goal, status, agent…"></p>
+  <table><thead><tr><th>Started</th><th>Status</th><th>Goal</th><th>Agent</th><th>Via</th><th>Time</th><th>Tokens</th><th>Tools</th><th>Blocks</th><th>Files</th></tr></thead><tbody id="body"></tbody></table>
+  <p class="muted" id="empty" hidden>No runs yet. Try:  python -m app --offline</p>
+</main>
+<script>
+const DATA = /*__DATA__*/null;
+const body = document.getElementById("body");
+function draw() {
+  const q = document.getElementById("q").value.toLowerCase(); body.replaceChildren(); let n = 0;
+  for (const r of DATA.runs) {
+    if (q && !JSON.stringify(r).toLowerCase().includes(q)) continue; n++;
+    const tr = document.createElement("tr"), cell = (t, cls) => { const td = document.createElement("td"); if (cls) td.className = cls; if (t instanceof Node) td.append(t); else td.textContent = t ?? "–"; tr.append(td); return td; };
+    const a = document.createElement("a"); a.textContent = (r.started_at || r.run_id || "").replace("T", " ").replace("+00:00", ""); a.href = r.run_id + (r.has_trace ? "/trace.html" : "/run.json"); cell(a);
+    cell(r.status, "chip " + r.status); const g = cell(r.goal, "goal"); g.title = r.goal || ""; cell(r.agent); cell(r.entry);
+    cell(r.duration_s != null ? r.duration_s + " s" : "–"); cell(r.tokens); cell(r.tool_calls); cell(r.blocks);
+    const f = document.createElement("a"); f.textContent = "output"; f.href = r.run_id + "/output/"; cell(f); body.append(tr);
+  }
+  document.getElementById("empty").hidden = n > 0;
+}
+document.getElementById("q").oninput = draw; draw();
+</script>
+</body>
+</html>
