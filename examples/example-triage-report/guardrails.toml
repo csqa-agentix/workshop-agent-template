@@ -1,0 +1,38 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# guardrails.toml – the rules your agent can NEVER break, whatever the prompt says.
+# A prompt is only a request. These are enforced by the program. Plain settings, no code.
+# If a rule blocks the agent, it is told why and changes its plan – you will see GUARD lines in the run.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[files]
+# The agent may only CHANGE files whose path starts with one of these.
+# A folder ends with "/" (output/). A single file is written exactly (tests/login.spec.ts).
+# Everything else in the workspace is read-only.
+writable = ["output/"]
+
+[commands]
+# Only matters if you switch on the run_command tool in agent.toml.
+# A command is allowed only if it STARTS WITH one of these. Keep this list as small as you can.
+# Examples:  "pytest"   "npx playwright test"   "newman run"   "git diff"   "git log"
+allowed = []
+
+[approval]
+# A human must click Approve (terminal: type y) before these tools run.
+# Tools that come from external MCP servers are controlled in mcp.json instead.
+required_for = ["run_command"]
+
+[budgets]
+max_tool_calls   = 40        # in one run, in total
+max_total_tokens = 250000    # model tokens spent in one run (protects your free quota)
+max_context_tokens = 100000  # how large the conversation itself may grow before the agent wraps up
+[budgets.per_tool]
+run_command = 12             # e.g. "retry at most twice" -> keep this small
+
+[claims]
+# "If the final answer says <words>, this tool must have run first" – stops claims without proof.
+# The left side is a regular expression. Remove the # to switch the example on.
+# "(?i)\\b(fixed|all tests pass)\\b" = "run_command"
+
+[limits]
+max_tools        = 4         # a small, sharp toolset beats a large one
+max_external_mcp = 1         # each extra MCP server is more surface to trust (see mcp.json)

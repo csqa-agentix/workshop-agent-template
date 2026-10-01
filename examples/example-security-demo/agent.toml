@@ -1,0 +1,12 @@
+[agent]
+name        = "Note Summariser (security demo)"
+description = "Summarises notes. Its workspace contains a booby-trapped file to show the safeguards."
+
+[[a2a_skills]]
+id          = "summarise-notes"
+name        = "Summarise notes"
+description = "Summarise the notes in the workspace faithfully."
+tags        = ["summary", "security-demo"]
+
+[tools]
+enabled = ["list_files", "read_file", "write_file", "run_command"]

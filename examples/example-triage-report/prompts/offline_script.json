@@ -1,0 +1,8 @@
+[
+  {"say": "Let me see what is in the workspace.", "calls": [{"tool": "list_files", "args": {"path": "."}}]},
+  {"say": "One results file. Get the totals and the failed rows together.", "calls": [
+    {"tool": "summarize_csv", "args": {"path": "results.csv", "column": "status"}},
+    {"tool": "search_text", "args": {"pattern": ",failed,", "path": "results.csv"}}]},
+  {"say": "Writing the report in the allowed folder.", "calls": [{"tool": "write_file", "args": {"path": "output/triage.md", "content": "# Triage report\n6 of 11 rows failed, in 4 groups.\n\n| Group | Items | Verdict | Evidence |\n|---|---|---|---|\n| Timeout #pay-button | checkout | likely temporary | TimeoutError; succeeded once |\n| 0 results | search | likely real defect | same message twice, never succeeds |\n| Connection reset | cart | likely temporary | succeeded on retry |\n| Empty note | profile | unclear | no message |\n\n## Needs a human\n- profile: why is the note empty?\n"}}]},
+  {"say": "6 of 11 rows failed, in 4 groups (2 temporary, 1 real defect, 1 unclear).\nReport: output/triage.md.\nA human must look at 'profile', whose note is empty."}
+]

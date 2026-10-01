@@ -1,0 +1,28 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# agent.toml – WHO your agent is and WHICH tools it may use.
+# Edit this file for your problem. (How it behaves is written in my_agent/prompts/agent.md)
+# ─────────────────────────────────────────────────────────────────────────────
+
+[agent]
+name        = "Workspace Briefer"
+description = "Reads the files in its workspace and writes a short, evidence-based briefing."
+version     = "0.1.0"
+
+# The business card other programs see when they call this agent over A2A.
+# One entry per kind of job people can ask for. (Not the same thing as prompt "skills".)
+[[a2a_skills]]
+id          = "brief-workspace"
+name        = "Brief the workspace"
+description = "Summarise what the workspace contains, with the file name as evidence for every fact."
+tags        = ["summary", "documents"]
+examples    = ["Brief me on what is in the workspace", "What are the open risks? Write them to output/risks.md"]
+
+[tools]
+# The tools the model may use. Workshop rule: at most FOUR. Built-in tools you can pick from:
+#   list_files, read_file, search_text, write_file, edit_file, run_command
+# (a tool you write in my_agent/tools/ must be listed here too)
+enabled = ["list_files", "read_file", "search_text", "write_file"]
+
+[server]
+host = "127.0.0.1"
+port = 8000

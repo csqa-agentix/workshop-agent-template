@@ -1,0 +1,8 @@
+openai>=1.50                  # the official OpenAI SDK (pointed at NVIDIA's OpenAI-compatible endpoint)
+mcp>=1.2,<2                   # Model Context Protocol SDK: how the agent reaches its tools (pinned: v2 renamed the server API)
+a2a-sdk[http-server]==1.2.1   # Agent2Agent protocol SDK: lets other programs call the agent at a URL (pinned: tested version)
+uvicorn>=0.30                 # the web server that hosts the A2A endpoint and the web page
+opentelemetry-sdk>=1.25                          # tracing: spans for every model call and tool call
+opentelemetry-exporter-otlp-proto-http>=1.25     # optional: send those spans to Phoenix / Langfuse / Jaeger
+python-dotenv>=1.0            # reads your .env file
+pytest>=8.0                   # tests

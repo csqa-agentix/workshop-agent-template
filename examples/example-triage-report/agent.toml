@@ -1,0 +1,12 @@
+[agent]
+name        = "Triage Reporter"
+description = "Turns a table of results into a short triage report (example of a custom tool plus a skill)."
+
+[[a2a_skills]]
+id          = "triage-results"
+name        = "Triage results"
+description = "Group failures by cause and judge whether each looks temporary or like a real defect."
+tags        = ["triage", "report"]
+
+[tools]
+enabled = ["list_files", "search_text", "write_file", "summarize_csv"]

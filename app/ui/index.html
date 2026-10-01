@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Console</title>
+<!--
+  MODULE 1 · ENTRY POINTS – the web page – a plain HTML page (no framework, no build step).
+  It talks to the agent exactly like any other A2A client:  POST /  with a JSON-RPC "SendStreamingMessage",
+  then reads the live stream of updates. Tick "Show raw A2A" to see the real messages going back and forth.
+-->
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1b1f24; --muted:#667085; --line:#e4e7ec; --accent:#2f5bea; --ok:#12805c; --bad:#b42318; --warn:#b54708; --code:#f0f2f5; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#12151a; --card:#1b2027; --ink:#e8eaee; --muted:#9aa3b2; --line:#2c333d; --accent:#7f9bff; --ok:#4cc38a; --bad:#ff7b72; --warn:#e3a23c; --code:#232a33; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 2px; } .sub { color:var(--muted); margin:0 0 20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
+  label { font-weight:600; display:block; margin-bottom:6px; }
+  textarea, input[type=password] { width:100%; font:inherit; color:inherit; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px; }
+  textarea { min-height: 84px; resize: vertical; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  button { font:inherit; border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:8px; padding:8px 14px; cursor:pointer; }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .chip { font-size:13px; padding:4px 10px; border-radius:999px; color:var(--muted); }
+  .status { font-weight:600; } .status.working { color:var(--accent); } .status.completed { color:var(--ok); } .status.failed { color:var(--bad); } .status.input { color:var(--warn); }
+  .steps { font:13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; max-height: 340px; overflow:auto; margin-top:8px; }
+  .step { padding:3px 0; border-bottom:1px dashed var(--line); white-space:pre-wrap; word-break:break-word; }
+  .tag { display:inline-block; min-width:72px; font-weight:700; }
+  .THINK{color:var(--muted)} .ACT{color:var(--accent)} .OBSERVE{color:var(--ok)} .GUARD{color:var(--bad)} .FINAL{color:var(--ink)}
+  .approval { border:2px solid var(--warn); }
+  pre { background:var(--code); padding:10px; border-radius:8px; overflow:auto; white-space:pre-wrap; word-break:break-word; margin:6px 0 0; font-size:13px; }
+  details { margin-top:8px; } summary { cursor:pointer; font-weight:600; }
+  .answer { white-space:pre-wrap; margin-top:6px; }
+  .hide { display:none; } small { color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="name">Agent</h1>
+  <p class="sub" id="desc">Connecting…</p>
+
+  <div class="card">
+    <label for="goal">What should the agent do? (the “goal”)</label>
+    <textarea id="goal" placeholder="Describe the goal in plain English…"></textarea>
+    <div class="row" id="examples"></div>
+    <div class="row">
+      <button class="primary" id="run">Run agent</button>
+      <button id="cancel" disabled>Cancel</button>
+      <span class="status" id="state"></span>
+      <label style="margin:0 0 0 auto;font-weight:400"><input type="checkbox" id="raw"> Show raw A2A messages</label>
+    </div>
+    <div class="row hide" id="tokenRow"><input type="password" id="token" placeholder="Access token (this server needs one)"></div>
+  </div>
+
+  <div class="card approval hide" id="approval">
+    <strong>The agent is asking for your permission</strong>
+    <pre id="approvalText"></pre>
+    <div class="row"><button class="primary" id="approve">Approve</button><button id="deny">Deny</button></div>
+  </div>
+
+  <div class="card hide" id="stepsCard">
+    <strong>What the agent is doing</strong> <small>(think → act → observe → repeat)</small>
+    <div class="steps" id="steps"></div>
+  </div>
+
+  <div class="card hide" id="answerCard">
+    <strong>Final answer</strong>
+    <div class="answer" id="answer"></div>
+    <div id="artifacts"></div>
+  </div>
+
+  <div class="card hide" id="rawCard">
+    <strong>Raw A2A traffic</strong> <small>(what really goes over the wire)</small>
+    <pre id="rawLog"></pre>
+  </div>
+  <p><small>Agent Card: <a href="/.well-known/agent-card.json">/.well-known/agent-card.json</a> · Protocol: A2A 1.0 over JSON-RPC</small></p>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let taskId = "", contextId = "", controller = null;
+
+fetch("/.well-known/agent-card.json").then(r => r.json()).then(card => {
+  $("name").textContent = card.name; document.title = card.name;
+  $("desc").textContent = card.description;
+  for (const skill of card.skills || []) for (const ex of skill.examples || []) {
+    const b = document.createElement("button"); b.className = "chip"; b.textContent = ex;
+    b.onclick = () => { $("goal").value = ex; }; $("examples").appendChild(b);
+  }
+}).catch(() => { $("desc").textContent = "Could not read the Agent Card. Is the server running?"; });
+
+function setState(text, cls) { $("state").textContent = text; $("state").className = "status " + (cls || ""); }
+function idle() { $("run").disabled = false; $("cancel").disabled = true; }
+function addStep(text) {
+  const m = /^(THINK|ACT|OBSERVE|GUARD|FINAL|NOTE)\s?([\s\S]*)$/.exec(text);
+  const d = document.createElement("div"); d.className = "step";
+  if (m) { const t = document.createElement("span"); t.className = "tag " + m[1]; t.textContent = m[1]; d.appendChild(t); }
+  d.appendChild(document.createTextNode(m ? m[2] : text));
+  $("steps").appendChild(d); $("steps").scrollTop = $("steps").scrollHeight; $("stepsCard").classList.remove("hide");
+}
+function logRaw(direction, obj) {
+  if (!$("raw").checked) return;
+  $("rawCard").classList.remove("hide");
+  $("rawLog").textContent += `${direction}\n${typeof obj === "string" ? obj : JSON.stringify(obj, null, 1)}\n\n`;
+}
+const textOf = msg => ((msg && msg.parts) || []).map(p => p.text || "").join("\n");
+
+async function send(text) {
+  const body = { jsonrpc: "2.0", id: Date.now(), method: "SendStreamingMessage",
+    params: { message: { messageId: crypto.randomUUID(), role: "ROLE_USER", parts: [{ text }], ...(taskId ? { taskId, contextId } : {}) } } };
+  const headers = { "Content-Type": "application/json", "A2A-Version": "1.0" };
+  if ($("token").value) headers.Authorization = "Bearer " + $("token").value;
+  logRaw("→ POST /", body);
+  controller = new AbortController();
+  const res = await fetch("/", { method: "POST", headers, body: JSON.stringify(body), signal: controller.signal });
+  if (res.status === 401) { $("tokenRow").classList.remove("hide"); throw new Error("This server needs an access token. Enter it above and run again."); }
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  const reader = res.body.getReader(), decoder = new TextDecoder(); let buffer = "";
+  while (true) {
+    const { value, done } = await reader.read(); if (done) break;
+    buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");   // SSE events end with a blank line
+    let cut; while ((cut = buffer.indexOf("\n\n")) >= 0) {
+      const chunk = buffer.slice(0, cut); buffer = buffer.slice(cut + 2);
+      const line = chunk.split("\n").find(l => l.startsWith("data:")); if (!line) continue;
+      const payload = JSON.parse(line.slice(5)); logRaw("← event", payload); handle(payload);
+    }
+  }
+}
+
+function handle(payload) {
+  if (payload.error) { setState("Error: " + payload.error.message, "failed"); idle(); return; }
+  const r = payload.result || {};
+  if (r.task) { taskId = r.task.id; contextId = r.task.contextId; setState("Submitted", "working"); }
+  if (r.artifactUpdate) addArtifact(r.artifactUpdate.artifact);
+  if (r.statusUpdate) {
+    const s = r.statusUpdate.status, st = s.state.replace("TASK_STATE_", ""), text = textOf(s.message);
+    taskId = r.statusUpdate.taskId; contextId = r.statusUpdate.contextId;
+    if (st === "WORKING") { setState("Working…", "working"); if (text) addStep(text); }
+    else if (st === "INPUT_REQUIRED") { setState("Waiting for you", "input"); $("approvalText").textContent = text; $("approval").classList.remove("hide"); }
+    else {  // finished: completed, failed, canceled or rejected
+      setState(st.charAt(0) + st.slice(1).toLowerCase(), st === "COMPLETED" ? "completed" : "failed");
+      $("answer").textContent = text; $("answerCard").classList.remove("hide");
+      idle(); taskId = contextId = "";
+    }
+  }
+}
+
+function addArtifact(a) {
+  const text = (a.parts || []).map(p => p.text !== undefined ? p.text : JSON.stringify(p.data, null, 2)).join("\n");
+  const d = document.createElement("details"); d.innerHTML = "<summary></summary><pre></pre>";
+  d.querySelector("summary").textContent = "📄 " + (a.name || "artifact"); d.querySelector("pre").textContent = text;
+  $("artifacts").appendChild(d); $("answerCard").classList.remove("hide");
+}
+
+async function start(text) {
+  try { await send(text); } catch (e) { if (e.name !== "AbortError") { setState(e.message, "failed"); idle(); } }
+}
+$("run").onclick = () => {
+  const goal = $("goal").value.trim(); if (!goal) { $("goal").focus(); return; }
+  for (const id of ["steps", "answer", "artifacts", "rawLog"]) $(id).textContent = "";
+  for (const id of ["answerCard", "approval", "stepsCard", "rawCard"]) $(id).classList.add("hide");
+  taskId = contextId = ""; $("run").disabled = true; $("cancel").disabled = false; setState("Starting…", "working"); start(goal);
+};
+const answerApproval = word => { $("approval").classList.add("hide"); setState("Working…", "working"); start(word); };
+$("approve").onclick = () => answerApproval("approve");
+$("deny").onclick = () => answerApproval("deny");
+$("cancel").onclick = async () => {
+  if (controller) controller.abort();
+  if (taskId) await fetch("/", { method: "POST", headers: { "Content-Type": "application/json", "A2A-Version": "1.0" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "CancelTask", params: { id: taskId } }) });
+  setState("Canceled", "failed"); idle(); $("approval").classList.add("hide");
+};
+</script>
+</body>
+</html>
